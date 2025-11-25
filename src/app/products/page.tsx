@@ -1,83 +1,110 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useProductStore } from '@/store/useProductStore';
-import ProductCard from '@/components/ProductCard';
-import ProductFilter from '@/components/ProductFilter';
-import SearchBar from '@/components/SearchBar';
+import { Product } from '@/types/product';
 import Link from 'next/link';
 
-type FilterType = 'all' | 'liked';
-
-export default function ProductsPage() {
-  const { products, fetchProducts, searchQuery, currentPage, itemsPerPage, setCurrentPage } = useProductStore();
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+export default function ProductDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { products } = useProductStore();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    setIsClient(true);
+    const productId = parseInt(params.id as string);
+    const foundProduct = products.find(p => p.id === productId);
+    
+    if (foundProduct) {
+      setProduct(foundProduct);
+    } else if (products.length > 0) {
+      router.push('/products');
+    }
+  }, [params.id, products, router]);
 
-  // Фильтрация и поиск
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.body.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter === 'all' || product.isLiked;
-    return matchesSearch && matchesFilter;
-  });
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Loading...</h1>
+        </div>
+      </div>
+    );
+  }
 
-  // Пагинация
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Product not found</h1>
+          <Link 
+            href="/products"
+            className="text-blue-500 hover:text-blue-600"
+          >
+            Back to Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Products</h1>
-          <Link 
-            href="/create-product"
-            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Create Product
-          </Link>
-        </div>
+        <Link 
+          href="/products"
+          className="inline-flex items-center text-blue-500 hover:text-blue-600 mb-6"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Products
+        </Link>
 
-        <SearchBar />
-        <ProductFilter activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No products found</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-              {paginatedProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            {/* Пагинация */}
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      currentPage === page
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="md:flex">
+            <div className="md:flex-1">
+              <div className="h-64 md:h-full bg-gray-200 flex items-center justify-center">
+                <img 
+                  src={product.imageUrl} 
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                />
               </div>
-            )}
-          </>
-        )}
+            </div>
+            
+            <div className="md:flex-1 p-8">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-3xl font-bold text-gray-800">{product.title}</h1>
+                <div className={`p-2 ${product.isLiked ? 'text-red-500' : 'text-gray-400'}`}>
+                  <svg className="w-8 h-8" fill={product.isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </div>
+              </div>
+              
+              <div className="prose max-w-none mb-6">
+                <p className="text-gray-600 leading-relaxed">{product.body}</p>
+              </div>
+              
+              <div className="border-t pt-6">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-semibold text-gray-500">Product ID:</span>
+                    <p className="text-gray-800">{product.id}</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-500">User ID:</span>
+                    <p className="text-gray-800">{product.userId}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
