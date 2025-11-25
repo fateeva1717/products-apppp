@@ -1,11 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // Убираем output: 'export' чтобы работали динамические маршруты
   trailingSlash: true,
   images: {
     unoptimized: true
-  },
-  skipTrailingSlashRedirect: true
+  }
 }
 
 module.exports = nextConfig
